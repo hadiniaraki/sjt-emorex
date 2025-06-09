@@ -1,0 +1,36 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environment
+venv/
+env/
+.env
+*.env
+
+# Flask specific
+instance/
+*.sqlite
+instance/
+.flaskenv
+
+# MySQL credentials or sensitive data
+*.sql
+*.dump
+
+# Logs
+*.log
+
+# IDE-specific files
+.vscode/
+.idea/
+*.swp
+*~
+
+# Miscellaneous
+*.DS_Store
+
+*.xlsm
+*.xlsx
+*.xls
