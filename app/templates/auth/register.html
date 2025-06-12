@@ -1,0 +1,37 @@
+{% extends 'base.html' %}
+{% from 'macros.html' import render_field %}
+
+{% block content %}
+    <div class="row justify-content-center">
+        <div class="col-md-6 col-lg-5">
+            <div class="card mt-5 shadow-sm">
+                <div class="card-header text-center bg-success text-white">
+                    <h3 class="mb-0">ثبت نام کاربر جدید</h3>
+                </div>
+                <div class="card-body">
+                    <form action="" method="post" novalidate>
+                        {{ form.hidden_tag() }}
+                        <div class="mb-3">
+                            {{ render_field(form.username, class="form-control", placeholder="نام کاربری") }}
+                        </div>
+                        <div class="mb-3">
+                            {{ render_field(form.password, class="form-control", placeholder="رمز عبور") }}
+                        </div>
+                        <div class="mb-3">
+                            {{ render_field(form.password2, class="form-control", placeholder="تکرار رمز عبور") }}
+                        </div>
+                        <div class="d-grid gap-2">
+                            {{ form.submit(class="btn btn-success btn-lg") }}
+                        </div>
+                    </form>
+                </div>
+                <div class="card-footer text-center">
+                    <p class="mb-0">
+                        قبلاً ثبت نام کرده‌اید؟
+                        <a href="{{ url_for('auth.login') }}" class="link-success">وارد شوید</a>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}

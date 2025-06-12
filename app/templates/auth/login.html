@@ -1,0 +1,40 @@
+{% extends 'base.html' %}
+{% from 'macros.html' import render_field %}
+
+{% block content %}
+    <div class="row justify-content-center">
+        <div class="col-md-6 col-lg-5">
+            <div class="card mt-5 shadow-sm">
+                <div class="card-header text-center bg-primary text-white">
+                    <h3 class="mb-0">ورود به سامانه SJT</h3>
+                </div>
+                <div class="card-body">
+                    <form action="" method="post" novalidate>
+                        {{ form.hidden_tag() }}
+                        <div class="mb-3">
+                            {# اصلاح شده: آرگومان‌ها را در extra_attrs به عنوان یک دیکشنری پاس دهید #}
+                            {{ render_field(form.username, extra_attrs={"class": "form-control", "placeholder": "نام کاربری"}) }}
+                        </div>
+                        <div class="mb-3">
+                            {# اصلاح شده: آرگومان‌ها را در extra_attrs به عنوان یک دیکشنری پاس دهید #}
+                            {{ render_field(form.password, extra_attrs={"class": "form-control", "placeholder": "رمز عبور"}) }}
+                        </div>
+                        <div class="mb-3 form-check">
+                            {{ form.remember_me(class="form-check-input") }}
+                            <label class="form-check-label" for="remember_me">{{ form.remember_me.label }}</label>
+                        </div>
+                        <div class="d-grid gap-2">
+                            {{ form.submit(class="btn btn-primary btn-lg") }}
+                        </div>
+                    </form>
+                </div>
+                <div class="card-footer text-center">
+                    <p class="mb-0">
+                        اگر اکانت ندارید،
+                        <a href="{{ url_for('auth.register') }}" class="link-primary">ثبت نام کنید</a>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
