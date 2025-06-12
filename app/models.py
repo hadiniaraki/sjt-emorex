@@ -6,7 +6,7 @@ from datetime import datetime
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(64), index=True, unique=True, nullable=False)
-    password_hash = db.Column(db.String(128))
+    password_hash = db.Column(db.String(256))
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -19,21 +19,22 @@ class User(UserMixin, db.Model):
 
 class Item(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    document_date = db.Column(db.Date, nullable=False)
-    product_id = db.Column(db.String(128), unique=True, nullable=False)
-    product_description = db.Column(db.String(256))
-    unit_of_measurement = db.Column(db.String(32))
-    quantity = db.Column(db.Integer, nullable=False)
-    unit_price = db.Column(db.Float, nullable=False)
-    final_amount = db.Column(db.Float)
     document_number = db.Column(db.String(64))
     invoice_number_ref = db.Column(db.String(64))
+    document_date = db.Column(db.Date, nullable=False)
     seller = db.Column(db.String(128))
     seller_province = db.Column(db.String(64))
     activity_type = db.Column(db.String(64))
     origin = db.Column(db.String(64))
     item_category = db.Column(db.String(64))
-
+    product_description = db.Column(db.String(256))
+    unit_of_measurement = db.Column(db.String(32))
+    quantity = db.Column(db.Integer, nullable=False)
+    unit_price = db.Column(db.Float, nullable=False)
+    final_amount = db.Column(db.Float)
+    product_id = db.Column(db.String(128), unique=True, nullable=False)
+    remarks = db.Column(db.Text, nullable=True)
+    
     usages = db.relationship('ItemUsageLog', backref='item', lazy='dynamic', cascade="all, delete-orphan")
 
     def __repr__(self):

@@ -1,0 +1,16 @@
+
+{% macro render_field(field, extra_attrs=None) %}
+    <div class="form-group">
+        {{ field.label(class="form-label") }}
+        {% if extra_attrs %}
+            {{ field(class="form-control", **extra_attrs) }}
+        {% else %}
+            {{ field(class="form-control") }}
+        {% endif %}
+        {% if field.errors %}
+            {% for error in field.errors %}
+                <span class="text-danger">{{ error }}</span>
+            {% endfor %}
+        {% endif %}
+    </div>
+{% endmacro %}

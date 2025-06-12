@@ -1,0 +1,78 @@
+{% extends 'base.html' %}
+{% from 'macros.html' import render_field %}
+
+{% block content %}
+    <h1 class="mb-4">{% if action == 'add' %}افزودن کالای جدید{% else %}ویرایش کالا{% endif %}</h1>
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">اطلاعات کالا</h5>
+                </div>
+                <div class="card-body">
+                    <form action="" method="post" novalidate>
+                        {{ form.hidden_tag() }}
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                {{ render_field(form.document_number, extra_attrs={'class': 'form-control', 'placeholder': 'مثال: 101'}) }}
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                {{ render_field(form.invoice_number_ref, extra_attrs={'class': 'form-control', 'placeholder': 'اختیاری: شماره صورتحساب مرجع'}) }}
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                {{ render_field(form.document_date, extra_attrs={'class': 'form-control', 'type': 'date'}) }}
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                {{ render_field(form.seller, extra_attrs={'class': 'form-control', 'placeholder': 'اختیاری: نام فروشنده'}) }}
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                {{ render_field(form.seller_province, extra_attrs={'class': 'form-control', 'placeholder': 'اختیاری: استان فروشنده'}) }}
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                {{ render_field(form.activity_type, extra_attrs={'class': 'form-control', 'placeholder': 'اختیاری: نوع فعالیت'}) }}
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                {{ render_field(form.origin, extra_attrs={'class': 'form-control', 'placeholder': 'اختیاری: مبدا کالا'}) }}
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                {{ render_field(form.item_category, extra_attrs={'class': 'form-control', 'placeholder': 'اختیاری: طبقه کالا'}) }}
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                {{ render_field(form.product_id, extra_attrs={'class': 'form-control', 'placeholder': 'مثال: KALA001'}) }}
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                {{ render_field(form.product_description, extra_attrs={'class': 'form-control', 'placeholder': 'اختیاری: شرح کامل کالا'}) }}
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                {{ render_field(form.unit_of_measurement, extra_attrs={'class': 'form-control', 'placeholder': 'اختیاری: عدد، کیلوگرم، ...'}) }}
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                {{ render_field(form.quantity, extra_attrs={'class': 'form-control', 'placeholder': 'تعداد'}) }}
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                {{ render_field(form.unit_price, extra_attrs={'class': 'form-control', 'placeholder': 'مبلغ واحد'}) }}
+                            </div>
+                        </div>
+
+                        <div class="d-grid gap-2 mt-4">
+                            {{ form.submit(class="btn btn-primary btn-lg") }}
+                        </div>
+                    </form>
+                </div>
+                <div class="card-footer text-center">
+                    <a href="{{ url_for('main.manage_items') }}" class="btn btn-secondary mt-3">بازگشت به مدیریت کالاها</a>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}

@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+{% from 'macros.html' import render_field %}
+
+{% block content %}
+    <h1 class="mb-4">تنظیمات سامانه</h1>
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card shadow-sm">
+                <div class="card-header bg-dark text-white">
+                    <h5 class="mb-0">تنظیمات کلی</h5>
+                </div>
+                <div class="card-body">
+                    <form action="" method="post" novalidate>
+                        {{ form.hidden_tag() }}
+                        <div class="mb-3">
+                            {{ render_field(form.start_invoice_number, extra_attrs={'class': 'form-control', 'placeholder': 'شماره شروع فاکتور'}) }}
+                            <div class="form-text">این شماره برای تولید شماره فاکتورهای خروجی استفاده می‌شود.</div>
+                        </div>
+                        <div class="d-grid gap-2">
+                            {{ form.submit(class="btn btn-dark btn-lg") }}
+                        </div>
+                    </form>
+                </div>
+                <div class="card-footer text-center">
+                    <a href="{{ url_for('main.dashboard') }}" class="btn btn-secondary mt-3">بازگشت به داشبورد</a>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}

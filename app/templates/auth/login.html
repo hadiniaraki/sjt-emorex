@@ -12,11 +12,9 @@
                     <form action="" method="post" novalidate>
                         {{ form.hidden_tag() }}
                         <div class="mb-3">
-                            {# اصلاح شده: آرگومان‌ها را در extra_attrs به عنوان یک دیکشنری پاس دهید #}
                             {{ render_field(form.username, extra_attrs={"class": "form-control", "placeholder": "نام کاربری"}) }}
                         </div>
                         <div class="mb-3">
-                            {# اصلاح شده: آرگومان‌ها را در extra_attrs به عنوان یک دیکشنری پاس دهید #}
                             {{ render_field(form.password, extra_attrs={"class": "form-control", "placeholder": "رمز عبور"}) }}
                         </div>
                         <div class="mb-3 form-check">
