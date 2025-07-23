@@ -1,8 +1,7 @@
+<!-- app/templates/dashboard.html -->
 {% extends 'base.html' %}
-
 {% block content %}
     <h1 class="mb-4">داشبورد</h1>
-
     <div class="row row-cols-1 row-cols-md-3 g-4 mb-4">
         <div class="col">
             <div class="card h-100 text-center shadow-sm">
@@ -32,7 +31,6 @@
             </div>
         </div>
     </div>
-
     <div class="row g-4">
         <div class="col-md-6">
             <div class="card shadow-sm">
@@ -44,12 +42,11 @@
                     <a href="{{ url_for('main.app_settings') }}" class="btn btn-secondary btn-sm">تغییر تنظیمات</a>
                     <hr>
                     <p class="mb-2"><strong>دانلود فایل‌های خروجی:</strong></p>
-                    <a href="{{ url_for('main.download_sjt_output') }}" class="btn btn-warning btn-sm mb-2" download>دانلود فایل خروجی SJT</a>
-                    <a href="{{ url_for('main.download_usage_log') }}" class="btn btn-dark btn-sm" download>دانلود لاگ مصرف کالاها</a>
+                    <!-- ✅✅✅ حذف لینک‌های دانلود فایل‌های ثابت ✅✅✅ -->
+                    <p class="text-muted">فایل‌های خروجی پس از پردازش فاکتورها در صفحه این داشبورد قابل دانلود خواهند بود.</p>
                 </div>
             </div>
         </div>
-
         <div class="col-md-6">
             <div class="card shadow-sm">
                 <div class="card-header bg-light">
@@ -70,7 +67,7 @@
                                     <tr>
                                         <td>{{ item.product_id }}</td>
                                         <td>{{ item.quantity }}</td>
-                                        <td>{{ item.remaining_quantity }}</td>
+                                        <td class="{% if item.remaining_quantity <= 0 %}text-danger fw-bold{% endif %}">{{ item.remaining_quantity }}</td>
                                     </tr>
                                 {% endfor %}
                             </tbody>

@@ -1,6 +1,6 @@
+<!-- app/templates/upload_items_file.html -->
 {% extends 'base.html' %}
 {% from 'macros.html' import render_field %}
-
 {% block content %}
     <h1 class="mb-4">آپلود فایل اطلاعات کالاها (اکسل)</h1>
     <div class="row justify-content-center">
@@ -19,7 +19,7 @@
                                 <span class="text-danger">{{ error }}</span><br>
                             {% endfor %}
                             <div class="form-text">فایل‌های مجاز: .xlsx, .xls</div>
-                            <small class="text-danger">توجه: آپلود این فایل، تمام اطلاعات کالاهای موجود در سیستم را پاک کرده و با اطلاعات جدید جایگزین می‌کند.</small>
+                            <small class="text-warning">توجه: آپلود این فایل، کالاهای جدید را اضافه یا کالاهای موجود را به‌روزرسانی می‌کند. کالاهایی که در فایل نیستند حذف نمی‌شوند.</small>
                         </div>
                         <div class="d-grid gap-2">
                             {{ form.submit(class="btn btn-success btn-lg") }}

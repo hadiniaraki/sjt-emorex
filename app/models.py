@@ -34,6 +34,7 @@ class Item(db.Model):
     final_amount = db.Column(db.Float)
     product_id = db.Column(db.String(128), unique=True, nullable=False)
     remarks = db.Column(db.Text, nullable=True)
+    remaining_quantity = db.Column(db.Integer, nullable=False, default=0)  
     
     usages = db.relationship('ItemUsageLog', backref='item', lazy='dynamic', cascade="all, delete-orphan")
 

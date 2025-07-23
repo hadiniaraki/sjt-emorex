@@ -1,12 +1,10 @@
+<!-- app/templates/manage_items.html -->
 {% extends 'base.html' %}
-
 {% block content %}
     <h1 class="mb-4">مدیریت کالاها</h1>
-
     <div class="d-flex justify-content-between align-items-center mb-3">
         <a href="{{ url_for('main.add_item') }}" class="btn btn-primary">افزودن کالای جدید</a>
     </div>
-
     {% if items %}
         <div class="table-responsive">
             <table class="table table-hover table-striped table-bordered">
@@ -14,7 +12,8 @@
                     <tr>
                         <th>شناسه کالا</th>
                         <th>شرح کالا</th>
-                        <th>تعداد</th>
+                        <th>تعداد اولیه</th>
+                        <th>موجودی باقی‌مانده</th> <!-- ✅✅✅ ستون جدید ✅✅✅ -->
                         <th>قیمت واحد</th>
                         <th>مبلغ نهایی</th>
                         <th>تاریخ سند</th>
@@ -27,6 +26,8 @@
                             <td>{{ item.product_id }}</td>
                             <td>{{ item.product_description }}</td>
                             <td>{{ item.quantity }}</td>
+                            <!-- ✅✅✅ نمایش موجودی باقی‌مانده ✅✅✅ -->
+                            <td class="{% if item.remaining_quantity <= 0 %}text-danger fw-bold{% endif %}">{{ item.remaining_quantity }}</td>
                             <td>{{ "%.2f"|format(item.unit_price) }}</td> 
                             <td>{{ "%.2f"|format(item.final_amount) }}</td>
                             <td>{{ item.document_date | to_jalali if item.document_date else 'N/A' }}</td>
@@ -46,7 +47,6 @@
             هنوز کالایی در سیستم ثبت نشده است. می‌توانید یک <a href="{{ url_for('main.add_item') }}">کالای جدید اضافه کنید</a> یا <a href="{{ url_for('main.upload_items_file') }}">فایل اطلاعات کالاها را آپلود کنید</a>.
         </div>
     {% endif %}
-
     <div class="text-center mt-4">
         <a href="{{ url_for('main.dashboard') }}" class="btn btn-secondary">بازگشت به داشبورد</a>
     </div>
