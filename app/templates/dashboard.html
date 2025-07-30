@@ -22,7 +22,7 @@
             </div>
         </div>
         <div class="col">
-             <div class="card h-100 text-center shadow-sm">
+            <div class="card h-100 text-center shadow-sm">
                 <div class="card-body">
                     <h5 class="card-title">ورود اولیه کالاها</h5>
                     <p class="card-text">اطلاعات اولیه کالاها را از یک فایل اکسل در سیستم بارگذاری کنید.</p>
@@ -42,7 +42,6 @@
                     <a href="{{ url_for('main.app_settings') }}" class="btn btn-secondary btn-sm">تغییر تنظیمات</a>
                     <hr>
                     <p class="mb-2"><strong>دانلود فایل‌های خروجی:</strong></p>
-                    <!-- ✅✅✅ حذف لینک‌های دانلود فایل‌های ثابت ✅✅✅ -->
                     <p class="text-muted">فایل‌های خروجی پس از پردازش فاکتورها در صفحه این داشبورد قابل دانلود خواهند بود.</p>
                 </div>
             </div>
@@ -75,6 +74,19 @@
                     {% else %}
                         <p class="text-muted">هنوز کالایی در انبار ثبت نشده است.</p>
                     {% endif %}
+                </div>
+            </div>
+        </div>
+        <!-- کارت جدید برای نمایش مقادیر ارز -->
+        <div class="col-md-6">
+            <div class="card shadow-sm">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">ارزش موجودی</h5>
+                </div>
+                <div class="card-body">
+                    <p><strong>ارز اولیه:</strong> <span class="badge bg-success fs-6">{{ initial_value | format_currency }}</span></p>
+                    <p><strong>ارز باقیمانده:</strong> <span class="badge bg-primary fs-6">{{ remaining_value | format_currency }}</span></p>
+                    <p><strong>ارز مصرف‌شده:</strong> <span class="badge bg-warning fs-6">{{ used_value | format_currency }}</span></p>
                 </div>
             </div>
         </div>

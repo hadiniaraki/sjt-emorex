@@ -2,3 +2,14 @@
     direction: rtl;
     margin: 0;
 }
+
+.operations-column {
+    width: 200px; /* تنظیم عرض ستون عملیات */
+    min-width: 200px; /* حداقل عرض برای جلوگیری از فشردگی */
+    white-space: nowrap; /* جلوگیری از شکستن خط */
+    text-align: center; /* مرکز کردن محتوا */
+}
+.operations-column .d-flex {
+    gap: 10px; /* فاصله بین دکمه‌ها */
+    justify-content: center; /* مرکز کردن دکمه‌ها */
+}

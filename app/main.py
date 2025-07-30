@@ -6,10 +6,11 @@ from flask_login import login_required
 from werkzeug.utils import secure_filename
 from sqlalchemy import func
 import pandas as pd
+import zipfile
 from app.extensions import db
 from app.models import Item, ItemUsageLog, Settings
 from app.forms import UploadInvoiceForm, UploadItemsFileForm, ItemForm, SettingsForm
-from app.utils import process_items_excel, process_excel_invoices, generate_sjt_output_excel, generate_usage_log_excel
+from app.utils import process_items_excel, process_excel_invoices, generate_sjt_output_excel, generate_usage_log_excel, calculate_inventory_values
 import logging
 
 logging.basicConfig(level=logging.DEBUG)
@@ -42,11 +43,25 @@ def dashboard():
             'product_id': item.product_id,
             'product_description': item.product_description,
             'quantity': item.quantity,
-            'remaining_quantity': item.remaining_quantity  # مستقیم از ستون
+            'remaining_quantity': item.remaining_quantity
         })
     
+    # دریافت مقادیر ارز از جدول Settings
+    initial_value = float(Settings.query.filter_by(setting_name='INITIAL_INVENTORY_VALUE').first().setting_value or 0)
+    remaining_value = float(Settings.query.filter_by(setting_name='REMAINING_INVENTORY_VALUE').first().setting_value or 0)
+    used_value = float(Settings.query.filter_by(setting_name='USED_INVENTORY_VALUE').first().setting_value or 0)
+    
     recent_usages = ItemUsageLog.query.order_by(ItemUsageLog.exit_date.desc()).limit(10).all()
-    return render_template('dashboard.html', title="داشبورد", start_invoice_number=start_invoice_number, items_in_stock=items_in_stock, recent_usages=recent_usages)
+    return render_template(
+        'dashboard.html',
+        title="داشبورد",
+        start_invoice_number=start_invoice_number,
+        items_in_stock=items_in_stock,
+        recent_usages=recent_usages,
+        initial_value=initial_value,
+        remaining_value=remaining_value,
+        used_value=used_value
+    )
 
 @bp.route('/upload_invoices', methods=['GET', 'POST'])
 @login_required
@@ -54,6 +69,8 @@ def upload_invoices():
     """
     Handles uploading, processing, and committing invoice data.
     Updates remaining_quantity in the Item table for inventory control.
+    Updates inventory values (initial, remaining, used) after processing.
+    Returns a zip file if multiple output files are generated, otherwise returns a single Excel file.
     """
     form = UploadInvoiceForm()
     if form.validate_on_submit():
@@ -69,8 +86,11 @@ def upload_invoices():
             else current_app.config.get('DEFAULT_START_INVOICE_NUMBER', 1901)
         )
         
+        output_files = []
         successfully_processed_files = []
         all_files_processed_successfully = True
+        all_log_entries = []
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
         for file in uploaded_files:
             if not (file and '.' in file.filename and file.filename.rsplit('.', 1)[1].lower() in current_app.config['ALLOWED_EXTENSIONS']):
@@ -107,70 +127,23 @@ def upload_invoices():
                             pass
                     continue
 
-                # --- Critical Section: Update Database ---
-                item_updates = {}
-                for entry in log_entries:
-                    if entry.item_id in item_updates:
-                        item_updates[entry.item_id] += entry.quantity_used
-                    else:
-                        item_updates[entry.item_id] = entry.quantity_used
-
-                items_to_update = []
-                pre_check_passed = True
-                insufficient_items = []
-                for item_id, total_needed in item_updates.items():
-                    item_to_check = Item.query.get(item_id)
-                    if not item_to_check:
-                        flash(f"خطای داخلی: کالایی با ID {item_id} یافت نشد.", 'danger')
-                        pre_check_passed = False
-                        break
-                    if item_to_check.remaining_quantity < total_needed:
-                        insufficient_items.append(f"{item_to_check.product_id} (موجود: {item_to_check.remaining_quantity}, نیاز: {total_needed})")
-                        pre_check_passed = False
-                    else:
-                        items_to_update.append(item_to_check)
-
-                if not pre_check_passed:
-                    if insufficient_items:
-                        flash(f"خطا در فایل '{filename}': موجودی کافی نیست برای: {', '.join(insufficient_items)}.", 'danger')
-                    else:
-                        flash(f"خطا در فایل '{filename}': بررسی موجودی با شکست مواجه شد.", 'danger')
-                    all_files_processed_successfully = False
-                    if os.path.exists(filepath):
-                        try:
-                            os.remove(filepath)
-                        except OSError:
-                            pass
-                    continue
-
                 try:
                     for entry in log_entries:
                         db.session.add(entry)
-                    
-                    logger.debug(f"Updating remaining quantities: {item_updates}")
-                    for item_obj in items_to_update:
-                        total_quantity_used = item_updates[item_obj.id]
-                        logger.debug(f"Item {item_obj.product_id}: Current remaining_quantity={item_obj.remaining_quantity}, To deduct={total_quantity_used}")
-                        item_obj.remaining_quantity -= total_quantity_used
-                        if item_obj.remaining_quantity < 0:
-                            raise ValueError(f"خطای داخلی: remaining_quantity برای {item_obj.product_id} منفی شد: {item_obj.remaining_quantity}")
-                        db.session.add(item_obj)
-
                     db.session.commit()
                     flash(f"فایل '{filename}' با موفقیت پردازش و موجودی کالاها به‌روز‌رسانی شد.", 'success')
                     successfully_processed_files.append(filename)
+                    all_log_entries.extend(log_entries)
 
-                    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                    template_path = os.path.join(current_app.root_path, 'sjt.xlsm')
-                    output_filename = f'sjt_output_{filename.split(".")[0]}_{timestamp}.xlsm'
+                    # Generate output Excel file
+                    output_filename = f'sjt_output_{current_invoice_number}_{timestamp}.xlsm'
                     output_sjt_path = os.path.join(current_app.config['UPLOAD_FOLDER'], output_filename)
-
+                    template_path = os.path.join(current_app.root_path, 'sjt.xlsm')
                     output_file_path, error = generate_sjt_output_excel(output_df, template_path, output_sjt_path)
                     if error:
                         flash(f"خطا در تولید فایل خروجی برای '{filename}': {error}", 'warning')
                     else:
-                        download_url = url_for('main.download_file', filename=output_filename)
-                        flash(f"فایل خروجی برای '{filename}' آماده است. <a href='{download_url}' class='alert-link'>دانلود کنید</a>", "info")
+                        output_files.append(output_sjt_path)
 
                     current_invoice_number = next_invoice_num
 
@@ -206,21 +179,46 @@ def upload_invoices():
                     start_invoice_setting = Settings(setting_name='START_INVOICE_NUMBER', setting_value=str(current_invoice_number))
                     db.session.add(start_invoice_setting)
                 db.session.commit()
-                flash(f"شماره فاکتور شروع به‌روز‌رسانی شد به: {current_invoice_number}", 'info')
+                # محاسبه و به‌روزرسانی مقادیر ارز
+                initial_value, remaining_value, used_value = calculate_inventory_values(db, Item, Settings)
+                flash(f"شماره فاکتور شروع به‌روز‌رسانی شد به: {current_invoice_number}. ارز اولیه: {initial_value:,.2f}, ارز باقیمانده: {remaining_value:,.2f}, ارز مصرف‌شده: {used_value:,.2f}", 'info')
             except Exception as e:
                 db.session.rollback()
                 flash(f"خطا در به‌روز‌رسانی شماره فاکتور شروع: {e}", 'danger')
         elif successfully_processed_files:
             flash("برخی فایل‌ها با موفقیت پردازش شدند، اما برخی خطا داشتند. شماره فاکتور شروع به‌روز نشد.", 'warning')
 
-        return redirect(url_for('main.dashboard'))
+        if output_files:
+            if len(output_files) > 1:
+                zip_filename = f"invoices_{timestamp}.zip"
+                zip_path = os.path.join(current_app.config['UPLOAD_FOLDER'], zip_filename)
+                with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+                    for output_file in output_files:
+                        zipf.write(output_file, os.path.basename(output_file))
+                        try:
+                            os.remove(output_file)
+                        except OSError:
+                            logger.warning(f"Failed to remove temporary output file {output_file}")
+                flash(f"فایل‌های خروجی در یک فایل زیپ آماده دانلود هستند. <a href='{url_for('main.download_file', filename=zip_filename)}' class='alert-link'>دانلود فایل زیپ</a>", 'info')
+                return redirect(url_for('main.dashboard'))
+            else:
+                download_url = url_for('main.download_file', filename=os.path.basename(output_files[0]))
+                flash(f"فایل خروجی آماده است. <a href='{download_url}' class='alert-link'>دانلود کنید</a>", 'info')
+                return redirect(url_for('main.dashboard'))
+        else:
+            flash("هیچ فایل خروجی تولید نشد.", 'warning')
+            return redirect(url_for('main.dashboard'))
 
     return render_template('upload_invoices.html', form=form, title="آپلود فاکتورها")
 
 @bp.route('/upload_items', methods=['GET', 'POST'])
 @login_required
 def upload_items_file():
-    """Handles uploading, processing, and committing item data to the database."""
+    """
+    Handles uploading, processing, and committing item data to the database.
+    Updates existing items if product_id exists, adding quantity to both quantity and remaining_quantity.
+    Updates inventory values after processing.
+    """
     form = UploadItemsFileForm()
     if form.validate_on_submit():
         items_file = form.items_file.data[0]
@@ -248,32 +246,69 @@ def upload_items_file():
                 for item_data in items_to_process:
                     product_id = item_data.get('product_id')
                     if not product_id:
+                        flash(f"شناسه کالا در ردیف نامعتبر است: {item_data}", 'warning')
+                        continue
+                    
+                    quantity_val = pd.to_numeric(item_data.get('quantity'), errors='coerce')
+                    new_quantity = int(quantity_val) if pd.notna(quantity_val) and quantity_val > 0 else 0
+                    if new_quantity <= 0:
+                        flash(f"مقدار نامعتبر برای کالا با شناسه {product_id}", 'warning')
                         continue
                     
                     existing_item = Item.query.filter_by(product_id=product_id).first()
                     if existing_item:
-                        for field, value in item_data.items():
-                            if hasattr(existing_item, field):
-                                setattr(existing_item, field, value)
+                        existing_item.document_number = item_data.get('document_number', existing_item.document_number)
+                        existing_item.invoice_number_ref = item_data.get('invoice_number_ref', existing_item.invoice_number_ref)
+                        existing_item.document_date = item_data.get('document_date', existing_item.document_date)
+                        existing_item.seller = item_data.get('seller', existing_item.seller)
+                        existing_item.seller_province = item_data.get('seller_province', existing_item.seller_province)
+                        existing_item.activity_type = item_data.get('activity_type', existing_item.activity_type)
+                        existing_item.origin = item_data.get('origin', existing_item.origin)
+                        existing_item.item_category = item_data.get('item_category', existing_item.item_category)
+                        existing_item.product_description = item_data.get('product_description', existing_item.product_description)
+                        existing_item.unit_of_measurement = item_data.get('unit_of_measurement', existing_item.unit_of_measurement)
+                        existing_item.quantity += new_quantity
+                        existing_item.unit_price = item_data.get('unit_price', existing_item.unit_price)
                         existing_item.final_amount = existing_item.quantity * existing_item.unit_price
-                        existing_item.remaining_quantity = existing_item.quantity  # به‌روزرسانی remaining_quantity
+                        existing_item.remarks = item_data.get('remarks', existing_item.remarks)
+                        existing_item.remaining_quantity += new_quantity
                         updated_item_count += 1
+                        logger.debug(f"Updated item {product_id}: quantity={existing_item.quantity}, remaining_quantity={existing_item.remaining_quantity}")
                     else:
-                        new_item = Item(**item_data)
-                        new_item.remaining_quantity = new_item.quantity  # تنظیم اولیه
+                        new_item = Item(
+                            product_id=product_id,
+                            document_number=item_data.get('document_number'),
+                            invoice_number_ref=item_data.get('invoice_number_ref'),
+                            document_date=item_data.get('document_date'),
+                            seller=item_data.get('seller'),
+                            seller_province=item_data.get('seller_province'),
+                            activity_type=item_data.get('activity_type'),
+                            origin=item_data.get('origin'),
+                            item_category=item_data.get('item_category'),
+                            product_description=item_data.get('product_description'),
+                            unit_of_measurement=item_data.get('unit_of_measurement'),
+                            quantity=new_quantity,
+                            unit_price=item_data.get('unit_price', 0.0),
+                            final_amount=item_data.get('final_amount'),
+                            remarks=item_data.get('remarks'),
+                            remaining_quantity=new_quantity
+                        )
                         db.session.add(new_item)
                         new_item_count += 1
+                        logger.debug(f"Added new item {product_id} with quantity: {new_quantity}")
                 
                 db.session.commit()
-                flash(f"عملیات با موفقیت انجام شد. {new_item_count} کالای جدید اضافه و {updated_item_count} کالای موجود آپدیت شد.", "success")
+                # محاسبه و به‌روزرسانی مقادیر ارز
+                initial_value, remaining_value, used_value = calculate_inventory_values(db, Item, Settings)
+                flash(f"عملیات با موفقیت انجام شد. {new_item_count} کالای جدید اضافه و {updated_item_count} کالای موجود آپدیت شد. ارز اولیه: {initial_value:,.2f}, ارز باقیمانده: {remaining_value:,.2f}, ارز مصرف‌شده: {used_value:,.2f}", "success")
             except Exception as e:
                 db.session.rollback()
-                flash(f"خطا در هنگام ذخیره‌سازی در دیتابیس: {e}", "danger")
+                flash(f"خطا در هنگام ذخیره‌سازی در دیتابیس: {str(e)}", "danger")
         if os.path.exists(filepath):
             try:
                 os.remove(filepath)
             except OSError:
-                pass
+                logger.warning(f"Failed to remove temporary file {filepath}")
                 
         return redirect(url_for('main.manage_items'))
     elif request.method == 'POST':
@@ -306,7 +341,7 @@ def manage_items():
             'final_amount': item.final_amount,
             'product_id': item.product_id,
             'remarks': item.remarks,
-            'remaining_quantity': item.remaining_quantity  # مستقیم از ستون
+            'remaining_quantity': item.remaining_quantity
         })
     return render_template('manage_items.html', title='مدیریت کالاها', items=items_with_stock)
 
@@ -316,6 +351,12 @@ def add_item():
     """Route to add a new item manually."""
     form = ItemForm()
     if form.validate_on_submit():
+        product_id = form.product_id.data
+        existing_item = Item.query.filter_by(product_id=product_id).first()
+        if existing_item:
+            flash(f"کالایی با شناسه {product_id} از قبل وجود دارد. لطفاً از آپلود فایل یا ویرایش استفاده کنید.", 'warning')
+            return redirect(url_for('main.add_item'))
+        
         new_item = Item(
             document_number=form.document_number.data,
             invoice_number_ref=form.invoice_number_ref.data,
@@ -325,17 +366,19 @@ def add_item():
             activity_type=form.activity_type.data,
             origin=form.origin.data,
             item_category=form.item_category.data,
-            product_id=form.product_id.data,
+            product_id=product_id,
             product_description=form.product_description.data,
             unit_of_measurement=form.unit_of_measurement.data,
             quantity=form.quantity.data,
             unit_price=form.unit_price.data,
             final_amount=form.quantity.data * form.unit_price.data,
-            remaining_quantity=form.quantity.data  # تنظیم اولیه
+            remaining_quantity=form.quantity.data
         )
         db.session.add(new_item)
         db.session.commit()
-        flash('کالای جدید با موفقیت اضافه شد.', 'success')
+        # محاسبه و به‌روزرسانی مقادیر ارز
+        initial_value, remaining_value, used_value = calculate_inventory_values(db, Item, Settings)
+        flash(f"کالای جدید با موفقیت اضافه شد. ارز اولیه: {initial_value:,.2f}, ارز باقیمانده: {remaining_value:,.2f}, ارز مصرف‌شده: {used_value:,.2f}", 'success')
         return redirect(url_for('main.manage_items'))
     return render_template('item_form.html', title='افزودن کالا', form=form, action='add')
 
@@ -348,9 +391,11 @@ def edit_item(item_id):
     if form.validate_on_submit():
         form.populate_obj(item)
         item.final_amount = item.quantity * item.unit_price
-        item.remaining_quantity = item.quantity  # فرض بر ریست شدن باقی‌مانده
+        item.remaining_quantity = item.quantity  # Reset remaining_quantity to quantity
         db.session.commit()
-        flash('کالا با موفقیت ویرایش شد.', 'success')
+        # محاسبه و به‌روزرسانی مقادیر ارز
+        initial_value, remaining_value, used_value = calculate_inventory_values(db, Item, Settings)
+        flash(f"کالا با موفقیت ویرایش شد. ارز اولیه: {initial_value:,.2f}, ارز باقیمانده: {remaining_value:,.2f}, ارز مصرف‌شده: {used_value:,.2f}", 'success')
         return redirect(url_for('main.manage_items'))
     return render_template('item_form.html', title='ویرایش کالا', form=form, action='edit')
 
@@ -361,7 +406,9 @@ def delete_item(item_id):
     item = Item.query.get_or_404(item_id)
     db.session.delete(item)
     db.session.commit()
-    flash('کالا و لاگ‌های مصرف مربوط به آن با موفقیت حذف شدند.', 'success')
+    # محاسبه و به‌روزرسانی مقادیر ارز
+    initial_value, remaining_value, used_value = calculate_inventory_values(db, Item, Settings)
+    flash(f"کالا و لاگ‌های مصرف مربوط به آن با موفقیت حذف شدند. ارز اولیه: {initial_value:,.2f}, ارز باقیمانده: {remaining_value:,.2f}, ارز مصرف‌شده: {used_value:,.2f}", 'success')
     return redirect(url_for('main.manage_items'))
 
 @bp.route('/settings', methods=['GET', 'POST'])
@@ -393,7 +440,8 @@ def download_file(filename):
     safe_filename = secure_filename(filename)
     uploads_dir = current_app.config['UPLOAD_FOLDER']
     if not os.path.normpath(os.path.join(uploads_dir, safe_filename)).startswith(os.path.normpath(uploads_dir)):
-        return "Access Denied", 403
+        flash("دسترسی غیرمجاز به فایل.", "danger")
+        return redirect(url_for('main.dashboard'))
     try:
         return send_from_directory(uploads_dir, safe_filename, as_attachment=True)
     except FileNotFoundError:

@@ -13,11 +13,11 @@
                         <th>شناسه کالا</th>
                         <th>شرح کالا</th>
                         <th>تعداد اولیه</th>
-                        <th>موجودی باقی‌مانده</th> <!-- ✅✅✅ ستون جدید ✅✅✅ -->
+                        <th>موجودی باقی‌مانده</th>
                         <th>قیمت واحد</th>
                         <th>مبلغ نهایی</th>
                         <th>تاریخ سند</th>
-                        <th>عملیات</th>
+                        <th class="operations-column">عملیات</th> <!-- اضافه کردن کلاس برای ستون عملیات -->
                     </tr>
                 </thead>
                 <tbody>
@@ -26,16 +26,17 @@
                             <td>{{ item.product_id }}</td>
                             <td>{{ item.product_description }}</td>
                             <td>{{ item.quantity }}</td>
-                            <!-- ✅✅✅ نمایش موجودی باقی‌مانده ✅✅✅ -->
                             <td class="{% if item.remaining_quantity <= 0 %}text-danger fw-bold{% endif %}">{{ item.remaining_quantity }}</td>
-                            <td>{{ "%.2f"|format(item.unit_price) }}</td> 
+                            <td>{{ "%.2f"|format(item.unit_price) }}</td>
                             <td>{{ "%.2f"|format(item.final_amount) }}</td>
                             <td>{{ item.document_date | to_jalali if item.document_date else 'N/A' }}</td>
-                            <td>
-                                <a href="{{ url_for('main.edit_item', item_id=item.id) }}" class="btn btn-sm btn-warning me-2">ویرایش</a>
-                                <form action="{{ url_for('main.delete_item', item_id=item.id) }}" method="post" style="display:inline;" onsubmit="return confirm('آیا از حذف این کالا مطمئن هستید؟ تمام لاگ‌های مصرف مربوط به آن نیز حذف خواهند شد.')">
-                                    <button type="submit" class="btn btn-sm btn-danger">حذف</button>
-                                </form>
+                            <td class="operations-column">
+                                <div class="d-flex align-items-center">
+                                    <a href="{{ url_for('main.edit_item', item_id=item.id) }}" class="btn btn-sm btn-warning me-2">ویرایش</a>
+                                    <form action="{{ url_for('main.delete_item', item_id=item.id) }}" method="post" class="d-inline" onsubmit="return confirm('آیا از حذف این کالا مطمئن هستید؟ تمام لاگ‌های مصرف مربوط به آن نیز حذف خواهند شد.')">
+                                        <button type="submit" class="btn btn-sm btn-danger">حذف</button>
+                                    </form>
+                                </div>
                             </td>
                         </tr>
                     {% endfor %}
